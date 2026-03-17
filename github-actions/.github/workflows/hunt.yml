@@ -1,0 +1,73 @@
+name: Oracle Cloud Hunter
+
+on:
+  workflow_dispatch:  # הפעלה ידנית / self-trigger אוטומטי
+
+jobs:
+  hunt:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Restore Terraform state
+        uses: actions/cache@v4
+        with:
+          path: |
+            .terraform
+            terraform.tfstate
+            terraform.tfstate.backup
+            .terraform.lock.hcl
+          key: terraform-state
+
+      - name: Check if already succeeded
+        id: check
+        run: |
+          if [ -f terraform.tfstate ] && grep -q "oracle-hunter-instance" terraform.tfstate 2>/dev/null; then
+            echo "already_done=true" >> $GITHUB_OUTPUT
+            echo "Instance כבר קיים — מפסיק."
+          else
+            echo "already_done=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Setup Terraform
+        if: steps.check.outputs.already_done == 'false'
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Write OCI API Key
+        if: steps.check.outputs.already_done == 'false'
+        run: |
+          mkdir -p ~/.oci
+          echo "${{ secrets.OCI_API_KEY }}" > ~/.oci/oci_api_key.pem
+          chmod 600 ~/.oci/oci_api_key.pem
+
+      - name: Terraform Init
+        if: steps.check.outputs.already_done == 'false'
+        run: terraform init
+        working-directory: github-actions
+
+      - name: Hunt for Instance
+        if: steps.check.outputs.already_done == 'false'
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: bash hunt.sh
+        working-directory: github-actions
+
+      - name: Save Terraform state
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            .terraform
+            terraform.tfstate
+            terraform.tfstate.backup
+            .terraform.lock.hcl
+          key: terraform-state
+
+      - name: Trigger next run
+        if: steps.check.outputs.already_done == 'false'
+        run: gh workflow run hunt.yml --repo ${{ github.repository }}
+        env:
+          GH_TOKEN: ${{ secrets.PAT_TOKEN }}
