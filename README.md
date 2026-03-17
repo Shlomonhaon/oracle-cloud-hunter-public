@@ -1,50 +1,50 @@
 # Oracle Cloud ARM Instance Hunter
 
-כלי אוטומטי לתפיסת Instance חינמי מסוג **VM.Standard.A1.Flex** (4 OCPU / 24GB RAM) ב-Oracle Cloud Free Tier.
+An automated tool to claim a free **VM.Standard.A1.Flex** instance (4 OCPU / 24GB RAM) on Oracle Cloud Free Tier.
 
-Oracle מגבילה את הזמינות של Instances חינמיים — הכלי מנסה ליצור Instance כל 60 שניות עד שמצליח, ושולח התראה ב-Telegram כשה-Instance קם.
+Oracle limits the availability of free ARM instances — this tool retries every 60 seconds until it succeeds, then sends a Telegram notification when the instance is up.
 
 ---
 
-## שיטות הרצה
+## Methods
 
-| | Docker (מקומי) | GitHub Actions (ענן) |
+| | Docker (Local) | GitHub Actions (Cloud) |
 |---|---|---|
-| דורש מחשב דלוק | ✅ כן | ❌ לא |
-| ניסיון כל | 60 שניות | 60 שניות |
-| התראת Telegram | ✅ | ✅ |
+| Requires PC to be on | ✅ Yes | ❌ No |
+| Retry interval | Every 60 seconds | Every 60 seconds |
+| Telegram notification | ✅ | ✅ |
 
 ---
 
-## דרישות מוקדמות
+## Prerequisites
 
-1. **חשבון Oracle Cloud** עם Free Tier
-2. **OCI API Key** — ניתן ליצור ב: `Oracle Console → Identity → API Keys`
-3. **בוט Telegram** — ניתן ליצור דרך `@BotFather`
-4. הגדרות מתוך Oracle Console:
+1. **Oracle Cloud account** with Free Tier
+2. **OCI API Key** — create at: `Oracle Console → Identity → API Keys`
+3. **Telegram Bot** — create via `@BotFather`
+4. The following from Oracle Console:
    - `Tenancy OCID`
    - `User OCID`
    - `API Key Fingerprint`
-   - `Subnet OCID` (Public Subnet בתוך ה-VCN שלך)
-   - `Region` (לדוגמה: `il-jerusalem-1`)
+   - `Subnet OCID` (Public Subnet inside your VCN)
+   - `Region` (e.g. `il-jerusalem-1`, `eu-frankfurt-1`)
 
 ---
 
-## הגדרת Telegram Bot
+## Telegram Bot Setup
 
-1. פתח `@BotFather` ב-Telegram
-2. שלח `/newbot` וקבל Token
-3. שלח הודעה לבוט, ואז פתח:
+1. Open `@BotFather` on Telegram
+2. Send `/newbot` and get your Token
+3. Send any message to your bot, then open:
    ```
    https://api.telegram.org/bot<TOKEN>/getUpdates
    ```
-4. העתק את `"id"` מתוך `"chat"` — זה ה-Chat ID שלך
+4. Copy the `"id"` value inside `"chat"` — this is your Chat ID
 
 ---
 
-## שיטה א' — Docker (הרצה מקומית)
+## Method A — Docker (Local Machine)
 
-### 1. בנה את ה-Image
+### 1. Build the Image
 
 ```bash
 git clone https://github.com/sam-bee/oracle-cloud-repeater.git
@@ -52,25 +52,24 @@ cd oracle-cloud-repeater
 docker build -t oracle-cloud-repeater .
 ```
 
-### 2. צור את תיקיית ה-config
+### 2. Create the config directory
 
 ```bash
 mkdir ~/oracle_hunter
 ```
 
-### 3. צור את קובץ המפתח
+### 3. Create the private key file
 
 ```bash
-# העתק את תוכן ה-Private Key שיצרת ב-Oracle Console
+# Paste the content of the Private Key you created in Oracle Console
 nano ~/oracle_hunter/oci_api_key.pem
 chmod 600 ~/oracle_hunter/oci_api_key.pem
 ```
 
-### 4. צור את קובץ ה-config
+### 4. Create the OCI config file
 
-```
-~/oracle_hunter/config:
-
+Create `~/oracle_hunter/config`:
+```ini
 [DEFAULT]
 user=YOUR_USER_OCID
 fingerprint=YOUR_FINGERPRINT
@@ -79,15 +78,15 @@ region=YOUR_REGION
 key_file=/app/config/oci_api_key.pem
 ```
 
-### 5. צור את main.tf
+### 5. Set up main.tf
 
-העתק את `docker/main.tf` מהפרויקט הזה ומלא את הפרטים שלך.
+Copy `docker/main.tf` from this repo and fill in your details.
 
-### 6. צור את run.sh
+### 6. Set up run.sh
 
-העתק את `docker/run.sh` מהפרויקט הזה ומלא את Telegram Token ו-Chat ID.
+Copy `docker/run.sh` from this repo and fill in your Telegram Token and Chat ID.
 
-### 7. הרץ
+### 7. Run
 
 ```bash
 docker run -d \
@@ -98,66 +97,103 @@ docker run -d \
   /bin/bash /app/config/run.sh
 ```
 
-### מעקב אחרי הלוגים
+### Follow logs
 
 ```bash
 docker logs -f oracle-cloud-repeater
 ```
 
+### Stop
+
+```bash
+docker rm -f oracle-cloud-repeater
+```
+
 ---
 
-## שיטה ב' — GitHub Actions (ענן, ללא מחשב)
+## Method B — GitHub Actions (Cloud, no PC needed)
 
-### 1. Fork את הפרויקט
+### 1. Fork this repository
 
-לחץ **Fork** בפינה הימנית העליונה.
+Click **Fork** in the top right corner.
 
-### 2. הגדר Secrets
+### 2. Configure Secrets
 
-עבור ל: `Settings → Secrets and variables → Actions → New repository secret`
+Go to: `Settings → Secrets and variables → Actions → New repository secret`
 
-| Secret | תוכן |
+| Secret | Value |
 |---|---|
-| `OCI_API_KEY` | תוכן קובץ ה-`.pem` (כולל `-----BEGIN PRIVATE KEY-----`) |
-| `TELEGRAM_TOKEN` | הטוקן מ-BotFather |
-| `TELEGRAM_CHAT_ID` | ה-Chat ID שלך |
+| `OCI_API_KEY` | Full content of your `.pem` file (including `-----BEGIN PRIVATE KEY-----`) |
+| `TELEGRAM_TOKEN` | Token from BotFather |
+| `TELEGRAM_CHAT_ID` | Your Chat ID |
+| `PAT_TOKEN` | GitHub Personal Access Token with `workflow` scope — create at [github.com/settings/tokens](https://github.com/settings/tokens/new) |
 
-### 3. עדכן main.tf
+### 3. Update main.tf
 
-ערוך את `github-actions/main.tf` עם הפרטים שלך (Tenancy, User, Fingerprint, Subnet, Region).
+Edit `github-actions/main.tf` with your Tenancy OCID, User OCID, Fingerprint, Subnet OCID, and Region.
 
-### 4. הפעל
+### 4. Trigger the first run
 
-עבור ל: `Actions → Oracle Cloud Hunter → Run workflow`
+Go to: `Actions → Oracle Cloud Hunter → Run workflow`
 
-מרגע ההפעלה — הכלי רץ לבד בענן ומפעיל את עצמו מחדש אוטומטית לאחר כל ריצה.
+From that point on, the workflow triggers itself automatically after every run — no manual intervention needed.
 
 ---
 
-## מבנה הפרויקט
+## How it works
+
+```
+Run starts
+  └── terraform apply
+       ├── Success → Telegram ✅ + exit
+       ├── Out of host capacity → wait 60s → retry
+       └── Other error → Telegram ❌ + exit
+
+Every 5 minutes → Telegram status update ⏳
+When run ends → triggers next run automatically 🔄
+```
+
+---
+
+## Project Structure
 
 ```
 oracle-cloud-hunter/
 ├── README.md
 ├── docker/
-│   ├── main.tf          # הגדרת ה-Instance ב-Terraform
-│   └── run.sh           # סקריפט הציד עם Telegram
+│   ├── main.tf          # Terraform instance definition
+│   └── run.sh           # Hunt loop with Telegram notifications
 └── github-actions/
-    ├── main.tf          # הגדרת ה-Instance ב-Terraform
-    ├── hunt.sh          # סקריפט הציד
+    ├── main.tf          # Terraform instance definition
+    ├── hunt.sh          # Hunt loop with Telegram notifications
     ├── .gitignore
     └── .github/
         └── workflows/
-            └── hunt.yml # הגדרת GitHub Actions
+            └── hunt.yml # GitHub Actions workflow definition
 ```
 
 ---
 
-## הודעות Telegram
+## Telegram Notifications
 
-| הודעה | משמעות |
+| Message | Meaning |
 |---|---|
-| 🚀 התחיל לרוץ | הסקריפט עלה |
-| ⏳ עדיין מחפש | עדכון כל 5 דקות |
-| ✅ הוקם בהצלחה | Instance מוכן + IP |
-| ❌ נכשל | שגיאה שאינה capacity |
+| 🚀 Started | Script is running |
+| ⏳ Still searching | Status update every 5 minutes |
+| ✅ Instance created | Success + public IP |
+| ❌ Failed | Non-capacity error occurred |
+
+---
+
+## Notes
+
+- The tool targets `VM.Standard.A1.Flex` with **4 OCPU and 24GB RAM** — Oracle's maximum free allocation
+- Oracle availability varies by region — it may take hours or days
+- The script stops automatically once the instance is successfully created
+- All sensitive data (API keys, tokens, OCIDs) must be kept private — never commit them to a public repo
+
+---
+
+## Credits
+
+Built on top of [sam-bee/oracle-cloud-repeater](https://github.com/sam-bee/oracle-cloud-repeater) using Terraform and GitHub Actions.
