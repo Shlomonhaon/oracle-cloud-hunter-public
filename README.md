@@ -29,12 +29,38 @@ Oracle מגבילה את הזמינות של Instances חינמיים — הכל
 1. **חשבון Oracle Cloud** עם Free Tier
 2. **OCI API Key** — ניתן ליצור ב: `Oracle Console → Identity → API Keys`
 3. **בוט Telegram** — ניתן ליצור דרך `@BotFather`
-4. הגדרות מתוך Oracle Console:
+4. **SSH Key** — כדי להתחבר ל-Instance אחרי שיוקם
+5. הגדרות מתוך Oracle Console:
    - `Tenancy OCID`
    - `User OCID`
    - `API Key Fingerprint`
    - `Subnet OCID` (Public Subnet בתוך ה-VCN שלך)
    - `Region`
+
+### יצירת SSH Key
+
+```bash
+# Linux / macOS / WSL
+ssh-keygen -t ed25519 -f ~/.ssh/oracle_hunter -C "oracle-hunter"
+
+# Windows PowerShell
+ssh-keygen -t ed25519 -f C:\Users\<שם_משתמש>\.ssh\oracle_hunter -C oracle-hunter
+```
+
+קובץ ה-Public Key נוצר ב: `~/.ssh/oracle_hunter.pub`
+תוכן שלו (שמתחיל ב-`ssh-ed25519 ...`) יש להכניס ל-`main.tf`:
+
+```hcl
+metadata = {
+  ssh_authorized_keys = "ssh-ed25519 AAAA... oracle-hunter"
+}
+```
+
+לאחר שה-Instance קם, תוכל להתחבר:
+
+```bash
+ssh -i ~/.ssh/oracle_hunter ubuntu@<IP>
+```
 
 ### הגדרת Telegram Bot
 
@@ -109,12 +135,38 @@ docker logs -f oracle-cloud-repeater
 1. **Oracle Cloud account** with Free Tier
 2. **OCI API Key** — create at: `Oracle Console → Identity → API Keys`
 3. **Telegram Bot** — create via `@BotFather`
-4. The following from Oracle Console:
+4. **SSH Key** — required to connect to the instance after it's created
+5. The following from Oracle Console:
    - `Tenancy OCID`
    - `User OCID`
    - `API Key Fingerprint`
    - `Subnet OCID` (Public Subnet inside your VCN)
    - `Region` (e.g. `il-jerusalem-1`, `eu-frankfurt-1`)
+
+### Generate SSH Key
+
+```bash
+# Linux / macOS / WSL
+ssh-keygen -t ed25519 -f ~/.ssh/oracle_hunter -C "oracle-hunter"
+
+# Windows PowerShell
+ssh-keygen -t ed25519 -f C:\Users\<your_username>\.ssh\oracle_hunter -C oracle-hunter
+```
+
+Your public key will be at `~/.ssh/oracle_hunter.pub`.
+Copy its content (starts with `ssh-ed25519 ...`) into `main.tf`:
+
+```hcl
+metadata = {
+  ssh_authorized_keys = "ssh-ed25519 AAAA... oracle-hunter"
+}
+```
+
+Once the instance is running, connect with:
+
+```bash
+ssh -i ~/.ssh/oracle_hunter ubuntu@<IP>
+```
 
 ---
 
